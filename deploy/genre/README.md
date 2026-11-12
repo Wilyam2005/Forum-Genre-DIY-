@@ -1,6 +1,6 @@
 # Deploy Forum GenRe DIY ke VPS
 
-Folder ini berisi aplikasi web hasil build, API Node.js, database SQLite, dan konfigurasi Docker/Caddy. Database dibuat otomatis saat aplikasi pertama kali dijalankan dan disimpan di `data/genre.sqlite`.
+Folder ini berisi aplikasi web hasil build, API Node.js, SQLite, dan konfigurasi Docker/Caddy. Pada instalasi baru, database dibuat otomatis saat aplikasi pertama kali dijalankan dan disimpan di `data/genre.sqlite`.
 
 ## Persiapan di VPS
 
@@ -23,11 +23,13 @@ Caddy akan meminta sertifikat TLS otomatis setelah DNS mengarah ke VPS dan port 
 
 ## Database dan keamanan
 
+- Hosting ini memakai SQLite, bukan MySQL. Untuk instalasi baru, tidak perlu mengunggah file database: API membuat database dan mengisi data awal otomatis.
 - Data berita, status publikasi, sorotan, jumlah tayangan, dan tombol tautan cepat disimpan di SQLite.
 - `data/` dipasang sebagai direktori persisten. Jangan hapus folder tersebut ketika memperbarui aplikasi.
-- Password admin dan secret sesi hanya disimpan di `.env`, bukan di frontend atau Git.
+- Password admin hosting diatur terpisah dari password lokal melalui `ADMIN_PASSWORD` di `.env` VPS. Isi password pilihan Anda (minimal 12 karakter); untuk menggunakan password lokal yang sama, atur nilainya di VPS juga.
+- Password admin dan secret sesi hanya disimpan di `.env`, bukan di frontend atau Git. Jangan mengunggah `.env` ke GitHub.
 - Untuk mencadangkan database, hentikan aplikasi dengan `docker compose stop app`, salin `data/genre.sqlite` ke lokasi aman, lalu hidupkan kembali dengan `docker compose start app`.
-- Jangan mengunggah `.env` atau berkas database produksi ke repositori publik.
+- File database yang sudah berisi data hanya perlu dipindahkan saat migrasi atau pemulihan. Jangan mengunggah database produksi ke repositori publik.
 
 ## Pengembangan lokal
 

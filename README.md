@@ -111,6 +111,7 @@ start-website.bat
    ```
 
    Untuk login Portal Admin saat pengembangan lokal, salin `.env.development.local.example` menjadi `.env.development.local`, ganti nilainya dengan password pilihan Anda, lalu mulai ulang Vite. File lokal tersebut tidak untuk diunggah.
+   Password lokal ini terpisah dari password hosting; atur `ADMIN_PASSWORD` di file `.env` VPS sesuai panduan deploy.
 2. Buka URL yang tertera di browser (biasanya `http://localhost:5173`).
 
 ### Menjalankan Pengujian Strix QA
