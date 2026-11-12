@@ -91,7 +91,7 @@ assert(
   dataContent.includes('Adi berarti unggul atau luhur') &&
   dataContent.includes('Adiwarna bermakna keberagaman') &&
   dataContent.includes('Penguatan Sinergi Berkelanjutan PIK-R') &&
-  dataContent.includes('PERBEDAAN DUTA GENRE & FORUM GENRE'),
+  dataContent.includes('Perbedaan Duta Genre & Forum Genre'),
   'Kesesuaian 100% Data Filosofi & Fokus dengan PDF',
   'Filosofi AnomAdiwarna, 3 Fokus Kabinet, dan Perbedaan Duta Genre terintegrasi presisi.'
 );

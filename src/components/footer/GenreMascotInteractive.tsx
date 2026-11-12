@@ -4,7 +4,7 @@ import { Sparkles, Heart } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sounds } from '../../utils/soundEffects';
 
-export const GenReMascotInteractive: React.FC = () => {
+export const GenreMascotInteractive: React.FC = () => {
   const [dialogIndex, setDialogIndex] = useState(0);
   const [isWaving, setIsWaving] = useState(false);
 
@@ -33,7 +33,6 @@ export const GenReMascotInteractive: React.FC = () => {
 
   return (
     <div className="relative flex flex-col items-center">
-      {/* Interactive Speech Bubble */}
       <AnimatePresence mode="wait">
         <motion.div
           key={dialogIndex}
@@ -43,12 +42,10 @@ export const GenReMascotInteractive: React.FC = () => {
           className="relative mb-3 px-4 py-2.5 rounded-2xl bg-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-soft max-w-xs text-center border-2 border-white select-none"
         >
           <span>{dialogs[dialogIndex]}</span>
-          {/* Bubble Arrow */}
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-amber-400" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Mascot Graphic Avatar */}
       <motion.div
         onClick={handleMascotClick}
         whileHover={{ scale: 1.08, rotate: 2 }}
@@ -62,7 +59,6 @@ export const GenReMascotInteractive: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="flex flex-col items-center"
           >
-            {/* Mascot Face */}
             <div className="flex gap-3 mb-1">
               <span className="w-2.5 h-3 bg-amber-500 rounded-full" />
               <span className="w-2.5 h-3 bg-amber-500 rounded-full" />
@@ -74,7 +70,6 @@ export const GenReMascotInteractive: React.FC = () => {
           <Heart className="w-3 h-3 text-pink-500 absolute bottom-2 left-2 animate-pulse" />
         </div>
 
-        {/* Click Tag */}
         <span className="absolute -bottom-2 px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[9px] font-black uppercase tracking-wider whitespace-nowrap shadow-sm border border-white">
           Sapa Saya! ✨
         </span>

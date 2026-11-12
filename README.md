@@ -1,13 +1,13 @@
-# Website Profil Organisasi Forum GenRe D.I. Yogyakarta
+# Website Profil Organisasi Forum Genre D.I. Yogyakarta
 ## Kabinet AnomAdiwarna (Masa Bakti 2025 - 2027)
 
-Website resmi profil organisasi **Forum GenRe D.I. Yogyakarta (Generasi Berencana Daerah Istimewa Yogyakarta)** untuk **Kabinet AnomAdiwarna** masa bakti **2025 - 2027**. Didesain dengan estetika modern, berjiwa muda (*youthful & energetic*), dilengkapi elemen **3D WebGL interaktif**, tata letak **Bento-Grid asimetris**, **kartu 3D flip effect** untuk 45 anggota & divisi, timeline kegiatan, dan sistem pengujian QA bawaan (**Strix**).
+Website resmi profil organisasi **Forum Genre D.I. Yogyakarta (Generasi Berencana Daerah Istimewa Yogyakarta)** untuk **Kabinet AnomAdiwarna** masa bakti **2025 - 2027**. Didesain dengan estetika modern, berjiwa muda (*youthful & energetic*), dilengkapi elemen **3D WebGL interaktif**, tata letak **Bento-Grid asimetris**, **kartu 3D flip effect** untuk 45 anggota & divisi, timeline kegiatan, dan sistem pengujian QA bawaan (**Strix**).
 
 ---
 
 ## 🌟 Fitur Utama & Keunggulan
 
-1. **Preloader Interaktif Centerpiece Logo GenRe**
+1. **Preloader Interaktif Centerpiece Logo Genre**
    - Menggunakan logo resmi `LOGO GENRE.png` dengan animasi aura cahaya *pulsing glow* dan progress bar organik.
 2. **Hero Section 3D Interaktif (Three.js WebGL)**
    - Tipografi 3D responsif mouse "*Kabinet AnomAdiwarna 2025-2027*".
@@ -16,7 +16,7 @@ Website resmi profil organisasi **Forum GenRe D.I. Yogyakarta (Generasi Berencan
 3. **Tentang Kami & Asymmetrical Bento Grid**
    - **Filosofi AnomAdiwarna**: Makna kata *Anom* (Muda, Inovatif, Pelopor) & *Adiwarna* (Sangat Indah, Cemerlang, Berkilau).
    - **Triad KKR**: Edukasi tolak pernikahan dini, seks pranikah, dan NAPZA.
-   - **Salam GenRe**: Penjelasan filosofis gestur tiga jari & yel-yel resmi.
+   - **Salam Genre**: Penjelasan filosofis gestur tiga jari & yel-yel resmi.
    - **8 Fungsi Keluarga**: Fondasi ketahanan keluarga & pencegahan stunting dari hulu.
    - **Visi & Misi 2025-2027**: 5 komitmen aksi strategis organisasi.
 4. **Galeri 3D Anggota & Divisi (3D Card Flip Effect)**
@@ -26,7 +26,7 @@ Website resmi profil organisasi **Forum GenRe D.I. Yogyakarta (Generasi Berencan
    - Pencarian cerdas (*live search*) nama atau divisi.
    - Modal inspeksi detail dengan resolusi tinggi.
 5. **Program Kerja Unggulan & Interactive Roadmap Timeline**
-   - Apresiasi Duta GenRe DIY, GenRe Goes To School/Campus (GGTS/GGTC), GENTING DIY (Cegah Stunting), GenRe Preneur Hub & Merch, ADUJAK DIY, dan Podcast Ngobrol Berencana (Ngobren DIY).
+   - Apresiasi Duta Genre DIY, Genre Goes To School/Campus (GGTS/GGTC), GENTING DIY (Cegah Stunting), Genre Preneur Hub & Merch, ADUJAK DIY, dan Podcast Ngobrol Berencana (Ngobren DIY).
    - Timeline interaktif scroll-triggered dengan status (Selesai, Sedang Berjalan, Mendatang).
 6. **Footer Interaktif & Maskot Remaja**
    - Maskot ceria interaktif yang bisa diklik untuk memunculkan pesan edukatif dan efek kembang api / *confetti*.
@@ -59,7 +59,7 @@ FG DIY/
 │   │   │   └── StrixQAInspector.tsx        # In-app QA evaluator
 │   │   ├── footer/
 │   │   │   ├── Footer.tsx                  # Footer resmi & kontak
-│   │   │   └── GenReMascotInteractive.tsx  # Maskot ceria interaktif
+│   │   │   └── GenreMascotInteractive.tsx  # Maskot ceria interaktif
 │   │   ├── hero/
 │   │   │   └── HeroSection.tsx             # 3D Typography & stats
 │   │   ├── programs/
@@ -85,14 +85,14 @@ FG DIY/
 │   └── strix-qa.js                         # Strix automated QA runner
 ├── start-website.bat                       # 1-click launcher Windows
 ├── vite.config.ts                          # Vite config
-├── tailwind.config.js                      # Custom brand palette GenRe DIY
+├── tailwind.config.js                      # Custom brand palette Genre DIY
 ├── package.json
 └── README.md
 ```
 
-### Deploy dengan database
+### Deploy dengan database MySQL
 
-Folder deploy Docker VPS tersedia di [`deploy/genre`](./deploy/genre/README.md). Paket ini memakai API Node.js dan SQLite persisten; tautan cepat, berita, serta sorotan dikelola bersama melalui Portal Admin. Jalankan `npm run build:deploy` untuk membangun frontend deploy, lalu ikuti petunjuk di README folder tersebut.
+Paket deploy Node.js dan MySQL tersedia di [`deploy/genre`](./deploy/genre/README.md), termasuk file SQL skema dan data awal. Berita, sorotan, dan tautan dikelola melalui Portal Admin. Jalankan `npm run build:deploy` untuk membangun frontend deploy, lalu ikuti panduan untuk mengimpor `deploy/genre/database.sql` dan mengatur koneksi MySQL.
 
 ---
 

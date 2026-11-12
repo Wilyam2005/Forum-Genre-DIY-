@@ -349,7 +349,7 @@ export const BentoGrid: React.FC = () => {
                   <div className="flex items-center gap-2 mb-3 [transform:translateZ(25px)]">
                     <Users className="w-6 h-6 text-amber-600" />
                     <h4 className="text-xl font-black text-slate-900 font-display">
-                      FORUM GENRE
+                      Forum Genre
                     </h4>
                   </div>
                   <p className="text-sm text-slate-600 leading-relaxed font-normal [transform:translateZ(20px)]">
@@ -369,7 +369,7 @@ export const BentoGrid: React.FC = () => {
                   <div className="flex items-center gap-2 mb-3 [transform:translateZ(25px)]">
                     <Award className="w-6 h-6 text-sky-600" />
                     <h4 className="text-xl font-black text-slate-900 font-display">
-                      DUTA GENRE
+                      Duta Genre
                     </h4>
                   </div>
                   <p className="text-sm text-slate-600 leading-relaxed font-normal [transform:translateZ(20px)]">

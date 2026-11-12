@@ -1,17 +1,15 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
-import initSqlJs from 'sql.js';
+import { createConnection, createPool } from 'mysql2/promise';
 
-const require = createRequire(import.meta.url);
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const deploymentDirectory = path.resolve(currentDirectory, '..');
 const publicDirectory = path.join(deploymentDirectory, 'public');
-const dataDirectory = path.resolve(process.env.DB_DIRECTORY || path.join(deploymentDirectory, 'data'));
-const databasePath = path.join(dataDirectory, 'genre.sqlite');
+const schemaPath = path.join(currentDirectory, 'schema.sql');
+const seedPath = path.join(currentDirectory, 'seed.json');
 const port = Number(process.env.PORT || 8080);
 const sessionCookie = 'genre_admin';
 const sessionDurationSeconds = 7 * 24 * 60 * 60;
@@ -29,131 +27,86 @@ if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
 if (!fs.existsSync(path.join(publicDirectory, 'index.html'))) {
   throw new Error('Frontend belum dibangun. Jalankan npm run build:deploy lalu salin dist ke deploy/genre/public.');
 }
-
-fs.mkdirSync(dataDirectory, { recursive: true });
-const SQL = await initSqlJs({
-  locateFile: (file) => path.join(path.dirname(require.resolve('sql.js')), file),
-});
-const rawDatabase = fs.existsSync(databasePath)
-  ? new SQL.Database(fs.readFileSync(databasePath))
-  : new SQL.Database();
-let transactionActive = false;
-
-function persistDatabase() {
-  fs.writeFileSync(databasePath, Buffer.from(rawDatabase.export()));
+if (!fs.existsSync(schemaPath) || !fs.existsSync(seedPath)) {
+  throw new Error('File server/schema.sql atau server/seed.json tidak ditemukan.');
 }
 
-function bindParameters(statement, parameters, sql) {
-  if (parameters.length === 0) return;
-  const namedValues = parameters.length === 1 && parameters[0] !== null &&
-    typeof parameters[0] === 'object' && !Array.isArray(parameters[0])
-    ? parameters[0]
-    : null;
-  const prefixMatch = sql.match(/[@:$][A-Za-z_]\w*/);
-  const values = namedValues
-    ? Object.fromEntries(Object.entries(namedValues).map(([key, value]) => [`${prefixMatch?.[0][0] || '@'}${key}`, value]))
-    : parameters;
-  statement.bind(values);
-}
-
-const database = {
-  exec(sql) {
-    rawDatabase.exec(sql);
-    if (!transactionActive) persistDatabase();
-  },
-  prepare(sql) {
-    return {
-      all(...parameters) {
-        const statement = rawDatabase.prepare(sql);
-        bindParameters(statement, parameters, sql);
-        const rows = [];
-        while (statement.step()) rows.push(statement.getAsObject());
-        statement.free();
-        return rows;
-      },
-      get(...parameters) {
-        const statement = rawDatabase.prepare(sql);
-        bindParameters(statement, parameters, sql);
-        const result = statement.step() ? statement.getAsObject() : undefined;
-        statement.free();
-        return result;
-      },
-      run(...parameters) {
-        const statement = rawDatabase.prepare(sql);
-        bindParameters(statement, parameters, sql);
-        statement.step();
-        statement.free();
-        const changes = rawDatabase.getRowsModified();
-        if (!transactionActive) persistDatabase();
-        return { changes };
-      },
-    };
-  },
-  transaction(callback) {
-    return (...parameters) => {
-      rawDatabase.run('BEGIN');
-      transactionActive = true;
-      try {
-        const result = callback(...parameters);
-        rawDatabase.run('COMMIT');
-        transactionActive = false;
-        persistDatabase();
-        return result;
-      } catch (error) {
-        rawDatabase.run('ROLLBACK');
-        transactionActive = false;
-        throw error;
-      }
-    };
-  },
+const databaseOptions = {
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
+  queueLimit: 0,
 };
-database.exec(`
-  CREATE TABLE IF NOT EXISTS kegiatan (
-    id TEXT PRIMARY KEY,
-    payload TEXT NOT NULL,
-    diterbitkan INTEGER NOT NULL,
-    jadwal_terbit TEXT,
-    tanggal TEXT NOT NULL,
-    dibuat_pada TEXT NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS tautan_cepat (
-    id TEXT PRIMARY KEY,
-    label TEXT NOT NULL,
-    url TEXT NOT NULL,
-    urutan INTEGER NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS pengaturan (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
-`);
 
-const insertActivity = database.prepare(`
-  INSERT OR IGNORE INTO kegiatan (id, payload, diterbitkan, jadwal_terbit, tanggal, dibuat_pada)
-  VALUES (@id, @payload, @diterbitkan, @jadwalTerbit, @tanggal, @dibuatPada)
-`);
-const seedPath = path.join(currentDirectory, 'seed.json');
-if (database.prepare('SELECT COUNT(*) AS count FROM kegiatan').get().count === 0 && fs.existsSync(seedPath)) {
-  const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
-  const insertSeed = database.transaction((items) => {
-    for (const item of items) {
-      insertActivity.run({
-        id: item.id,
-        payload: JSON.stringify(item),
-        diterbitkan: item.diterbitkan ? 1 : 0,
-        jadwalTerbit: item.jadwalTerbit || null,
-        tanggal: item.tanggal,
-        dibuatPada: item.dibuatPada,
-      });
-    }
-  });
-  insertSeed(seed);
+for (const name of ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME']) {
+  if (!process.env[name]) throw new Error(`${name} wajib diatur.`);
+}
+if (!Number.isInteger(databaseOptions.port) || databaseOptions.port < 1 || databaseOptions.port > 65535) {
+  throw new Error('DB_PORT harus berupa port MySQL yang valid.');
+}
+if (!Number.isInteger(databaseOptions.connectionLimit) || databaseOptions.connectionLimit < 1) {
+  throw new Error('DB_CONNECTION_LIMIT harus berupa bilangan bulat positif.');
 }
 
-const app = express();
-app.set('trust proxy', 1);
-app.disable('x-powered-by');
-app.use(express.json({ limit: '6mb' }));
+const initializationConnection = await createConnection({
+  ...databaseOptions,
+  multipleStatements: true,
+});
+try {
+  await initializationConnection.query(fs.readFileSync(schemaPath, 'utf8'));
+  const [countRows] = await initializationConnection.execute('SELECT COUNT(*) AS count FROM kegiatan');
+  if (Number(countRows[0].count) === 0) {
+    const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+    await initializationConnection.beginTransaction();
+    try {
+      for (const item of seed) {
+        await initializationConnection.execute(`
+          INSERT IGNORE INTO kegiatan (id, payload, diterbitkan, jadwal_terbit, tanggal, dibuat_pada)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [
+          item.id,
+          JSON.stringify(item),
+          item.diterbitkan ? 1 : 0,
+          item.jadwalTerbit || null,
+          item.tanggal,
+          item.dibuatPada,
+        ]);
+      }
+      await initializationConnection.commit();
+    } catch (error) {
+      await initializationConnection.rollback();
+      throw error;
+    }
+  }
+} finally {
+  await initializationConnection.end();
+}
+
+const database = createPool(databaseOptions);
+
+async function query(sql, values = []) {
+  const [rows] = await database.execute(sql, values);
+  return rows;
+}
+
+async function withTransaction(callback) {
+  const connection = await database.getConnection();
+  try {
+    await connection.beginTransaction();
+    const result = await callback(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
 
 function issueSession(timestamp = Date.now()) {
   const value = String(timestamp);
@@ -172,12 +125,7 @@ function hasValidSession(request) {
   const issuedAt = Number(timestamp);
   if (!Number.isSafeInteger(issuedAt) || Date.now() - issuedAt > sessionDurationSeconds * 1000) return false;
   const expected = Buffer.from(issueSession(issuedAt).split('.')[1], 'hex');
-  let actual;
-  try {
-    actual = Buffer.from(signature, 'hex');
-  } catch {
-    return false;
-  }
+  const actual = Buffer.from(signature || '', 'hex');
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
 
@@ -189,6 +137,10 @@ function requireAdmin(request, response, next) {
   next();
 }
 
+function asyncRoute(handler) {
+  return (request, response, next) => Promise.resolve(handler(request, response, next)).catch(next);
+}
+
 function validateExternalUrl(value) {
   try {
     const url = new URL(value);
@@ -198,51 +150,50 @@ function validateExternalUrl(value) {
   }
 }
 
-function publishScheduled() {
+async function publishScheduled() {
   const now = new Date().toISOString();
-  const dueItems = database.prepare(`
+  const dueItems = await query(`
     SELECT id, payload FROM kegiatan
     WHERE diterbitkan = 0 AND jadwal_terbit IS NOT NULL AND jadwal_terbit <= ?
-  `).all(now);
+  `, [now]);
   if (dueItems.length === 0) return;
 
-  const update = database.prepare(`
-    UPDATE kegiatan SET payload = ?, diterbitkan = 1, jadwal_terbit = NULL WHERE id = ?
-  `);
-  const publish = database.transaction((items) => {
-    for (const row of items) {
+  await withTransaction(async (connection) => {
+    for (const row of dueItems) {
       const item = JSON.parse(row.payload);
       item.diterbitkan = true;
       item.jadwalTerbit = null;
       item.diperbarui = now;
-      update.run(JSON.stringify(item), row.id);
+      await connection.execute(`
+        UPDATE kegiatan SET payload = ?, diterbitkan = 1, jadwal_terbit = NULL
+        WHERE id = ? AND diterbitkan = 0
+      `, [JSON.stringify(item), row.id]);
     }
   });
-  publish(dueItems);
 }
 
-function getActivity(id) {
-  const row = database.prepare('SELECT payload FROM kegiatan WHERE id = ?').get(id);
-  return row ? JSON.parse(row.payload) : null;
+async function getActivity(id) {
+  const rows = await query('SELECT payload FROM kegiatan WHERE id = ?', [id]);
+  return rows.length ? JSON.parse(rows[0].payload) : null;
 }
 
-function saveActivity(item) {
-  database.prepare(`
+async function saveActivity(item) {
+  await database.execute(`
     INSERT INTO kegiatan (id, payload, diterbitkan, jadwal_terbit, tanggal, dibuat_pada)
-    VALUES (@id, @payload, @diterbitkan, @jadwalTerbit, @tanggal, @dibuatPada)
-    ON CONFLICT(id) DO UPDATE SET
-      payload = excluded.payload,
-      diterbitkan = excluded.diterbitkan,
-      jadwal_terbit = excluded.jadwal_terbit,
-      tanggal = excluded.tanggal
-  `).run({
-    id: item.id,
-    payload: JSON.stringify(item),
-    diterbitkan: item.diterbitkan ? 1 : 0,
-    jadwalTerbit: item.jadwalTerbit || null,
-    tanggal: item.tanggal,
-    dibuatPada: item.dibuatPada,
-  });
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      payload = VALUES(payload),
+      diterbitkan = VALUES(diterbitkan),
+      jadwal_terbit = VALUES(jadwal_terbit),
+      tanggal = VALUES(tanggal)
+  `, [
+    item.id,
+    JSON.stringify(item),
+    item.diterbitkan ? 1 : 0,
+    item.jadwalTerbit || null,
+    item.tanggal,
+    item.dibuatPada,
+  ]);
 }
 
 function validateActivity(data) {
@@ -272,10 +223,15 @@ function validateQuickLink(data) {
   return null;
 }
 
-app.get('/api/health', (_request, response) => {
-  database.prepare('SELECT 1').get();
+const app = express();
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(express.json({ limit: '6mb' }));
+
+app.get('/api/health', asyncRoute(async (_request, response) => {
+  await query('SELECT 1');
   response.json({ status: 'ok' });
-});
+}));
 
 app.post('/api/auth/login', (request, response) => {
   const password = request.body?.password;
@@ -307,43 +263,43 @@ app.get('/api/auth/session', (request, response) => {
   response.json(hasValidSession(request));
 });
 
-app.get('/api/kegiatan', (_request, response) => {
-  publishScheduled();
-  const rows = database.prepare(`
+app.get('/api/kegiatan', asyncRoute(async (_request, response) => {
+  await publishScheduled();
+  const rows = await query(`
     SELECT payload FROM kegiatan WHERE diterbitkan = 1 ORDER BY tanggal DESC
-  `).all();
+  `);
   response.json(rows.map((row) => JSON.parse(row.payload)));
-});
+}));
 
-app.get('/api/kegiatan/:id', (request, response) => {
-  publishScheduled();
-  const item = getActivity(request.params.id);
+app.get('/api/kegiatan/:id', asyncRoute(async (request, response) => {
+  await publishScheduled();
+  const item = await getActivity(request.params.id);
   if (!item || !item.diterbitkan) {
     response.status(404).json({ error: 'Berita tidak ditemukan.' });
     return;
   }
   response.json(item);
-});
+}));
 
-app.post('/api/kegiatan/:id/views', (request, response) => {
-  const item = getActivity(request.params.id);
+app.post('/api/kegiatan/:id/views', asyncRoute(async (request, response) => {
+  const item = await getActivity(request.params.id);
   if (!item || !item.diterbitkan) {
     response.status(404).json({ error: 'Berita tidak ditemukan.' });
     return;
   }
   item.jumlahViews = (item.jumlahViews || 0) + 1;
   item.diperbarui = new Date().toISOString();
-  saveActivity(item);
+  await saveActivity(item);
   response.json({ jumlahViews: item.jumlahViews });
-});
+}));
 
-app.get('/api/admin/kegiatan', requireAdmin, (_request, response) => {
-  publishScheduled();
-  const rows = database.prepare('SELECT payload FROM kegiatan ORDER BY dibuat_pada DESC').all();
+app.get('/api/admin/kegiatan', requireAdmin, asyncRoute(async (_request, response) => {
+  await publishScheduled();
+  const rows = await query('SELECT payload FROM kegiatan ORDER BY dibuat_pada DESC');
   response.json(rows.map((row) => JSON.parse(row.payload)));
-});
+}));
 
-app.post('/api/admin/kegiatan', requireAdmin, (request, response) => {
+app.post('/api/admin/kegiatan', requireAdmin, asyncRoute(async (request, response) => {
   const data = request.body;
   const error = validateActivity(data);
   if (error) {
@@ -359,12 +315,12 @@ app.post('/api/admin/kegiatan', requireAdmin, (request, response) => {
     diperbarui: now,
     jumlahViews: 0,
   };
-  saveActivity(item);
+  await saveActivity(item);
   response.status(201).json(item);
-});
+}));
 
-app.put('/api/admin/kegiatan/:id', requireAdmin, (request, response) => {
-  const current = getActivity(request.params.id);
+app.put('/api/admin/kegiatan/:id', requireAdmin, asyncRoute(async (request, response) => {
+  const current = await getActivity(request.params.id);
   if (!current) {
     response.status(404).json({ error: 'Berita tidak ditemukan.' });
     return;
@@ -375,102 +331,113 @@ app.put('/api/admin/kegiatan/:id', requireAdmin, (request, response) => {
     response.status(400).json({ error });
     return;
   }
-  saveActivity(updated);
+  await saveActivity(updated);
   response.json(updated);
-});
+}));
 
-app.delete('/api/admin/kegiatan/:id', requireAdmin, (request, response) => {
-  const result = database.prepare('DELETE FROM kegiatan WHERE id = ?').run(request.params.id);
-  if (result.changes === 0) {
+app.delete('/api/admin/kegiatan/:id', requireAdmin, asyncRoute(async (request, response) => {
+  const result = await withTransaction(async (connection) => {
+    const [deleteResult] = await connection.execute('DELETE FROM kegiatan WHERE id = ?', [request.params.id]);
+    if (deleteResult.affectedRows === 0) return false;
+    await connection.execute('DELETE FROM pengaturan WHERE `key` = ? AND `value` = ?', [
+      'featured_news_id',
+      request.params.id,
+    ]);
+    return true;
+  });
+  if (!result) {
     response.status(404).json({ error: 'Berita tidak ditemukan.' });
     return;
   }
-  database.prepare('DELETE FROM pengaturan WHERE key = ? AND value = ?')
-    .run('featured_news_id', request.params.id);
   response.json({ ok: true });
-});
+}));
 
-app.get('/api/featured', (_request, response) => {
-  publishScheduled();
-  const selected = database.prepare('SELECT value FROM pengaturan WHERE key = ?').get('featured_news_id');
-  const item = selected ? getActivity(selected.value) : null;
+app.get('/api/featured', asyncRoute(async (_request, response) => {
+  await publishScheduled();
+  const rows = await query('SELECT `value` FROM pengaturan WHERE `key` = ?', ['featured_news_id']);
+  const item = rows.length ? await getActivity(rows[0].value) : null;
   response.json(item?.diterbitkan ? item : null);
-});
+}));
 
-app.put('/api/admin/featured', requireAdmin, (request, response) => {
+app.put('/api/admin/featured', requireAdmin, asyncRoute(async (request, response) => {
   const id = request.body?.id;
   if (id === null) {
-    database.prepare('DELETE FROM pengaturan WHERE key = ?').run('featured_news_id');
+    await database.execute('DELETE FROM pengaturan WHERE `key` = ?', ['featured_news_id']);
     response.json({ ok: true });
     return;
   }
-  const item = typeof id === 'string' ? getActivity(id) : null;
+  const item = typeof id === 'string' ? await getActivity(id) : null;
   if (!item || !item.diterbitkan) {
     response.status(400).json({ error: 'Pilih berita yang sudah tayang.' });
     return;
   }
-  database.prepare(`
-    INSERT INTO pengaturan (key, value) VALUES (?, ?)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value
-  `).run('featured_news_id', id);
+  await database.execute(
+    'INSERT INTO pengaturan (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
+    ['featured_news_id', id],
+  );
   response.json({ ok: true });
-});
+}));
 
-app.get('/api/quick-links', (_request, response) => {
-  const links = database.prepare('SELECT id, label, url, urutan FROM tautan_cepat ORDER BY urutan, rowid').all();
+app.get('/api/quick-links', asyncRoute(async (_request, response) => {
+  const links = await query('SELECT id, label, url, urutan FROM tautan_cepat ORDER BY urutan, id');
   response.json(links);
-});
+}));
 
-app.post('/api/admin/quick-links', requireAdmin, (request, response) => {
+app.post('/api/admin/quick-links', requireAdmin, asyncRoute(async (request, response) => {
   const error = validateQuickLink(request.body);
   if (error) {
     response.status(400).json({ error });
     return;
   }
+  const rows = await query('SELECT COALESCE(MAX(urutan), -1) + 1 AS next FROM tautan_cepat');
   const link = {
     id: crypto.randomUUID(),
     label: request.body.label.trim(),
     url: request.body.url.trim(),
-    urutan: database.prepare('SELECT COALESCE(MAX(urutan), -1) + 1 AS next FROM tautan_cepat').get().next,
+    urutan: rows[0].next,
   };
-  database.prepare('INSERT INTO tautan_cepat (id, label, url, urutan) VALUES (@id, @label, @url, @urutan)')
-    .run(link);
+  await database.execute('INSERT INTO tautan_cepat (id, label, url, urutan) VALUES (?, ?, ?, ?)', [
+    link.id,
+    link.label,
+    link.url,
+    link.urutan,
+  ]);
   response.status(201).json(link);
-});
+}));
 
-app.put('/api/admin/quick-links/:id', requireAdmin, (request, response) => {
+app.put('/api/admin/quick-links/:id', requireAdmin, asyncRoute(async (request, response) => {
   const error = validateQuickLink(request.body);
   if (error) {
     response.status(400).json({ error });
     return;
   }
-  const result = database.prepare(`
+  await database.execute(`
     UPDATE tautan_cepat SET label = ?, url = ? WHERE id = ?
-  `).run(request.body.label.trim(), request.body.url.trim(), request.params.id);
-  if (result.changes === 0) {
+  `, [request.body.label.trim(), request.body.url.trim(), request.params.id]);
+  const rows = await query('SELECT id, label, url, urutan FROM tautan_cepat WHERE id = ?', [request.params.id]);
+  if (rows.length === 0) {
     response.status(404).json({ error: 'Tombol tautan tidak ditemukan.' });
     return;
   }
-  const link = database.prepare('SELECT id, label, url, urutan FROM tautan_cepat WHERE id = ?')
-    .get(request.params.id);
-  response.json(link);
-});
+  response.json(rows[0]);
+}));
 
-app.delete('/api/admin/quick-links/:id', requireAdmin, (request, response) => {
-  const remove = database.transaction((id) => {
-    const result = database.prepare('DELETE FROM tautan_cepat WHERE id = ?').run(id);
-    if (result.changes === 0) return false;
-    const remaining = database.prepare('SELECT id FROM tautan_cepat ORDER BY urutan, rowid').all();
-    const updateOrder = database.prepare('UPDATE tautan_cepat SET urutan = ? WHERE id = ?');
-    remaining.forEach((link, index) => updateOrder.run(index, link.id));
+app.delete('/api/admin/quick-links/:id', requireAdmin, asyncRoute(async (request, response) => {
+  const removed = await withTransaction(async (connection) => {
+    const [deleteResult] = await connection.execute('DELETE FROM tautan_cepat WHERE id = ?', [request.params.id]);
+    if (deleteResult.affectedRows === 0) return false;
+    const [remaining] = await connection.execute('SELECT id FROM tautan_cepat ORDER BY urutan, id');
+    for (const [index, link] of remaining.entries()) {
+      await connection.execute('UPDATE tautan_cepat SET urutan = ? WHERE id = ?', [index, link.id]);
+    }
     return true;
   });
-  if (!remove(request.params.id)) {
+  if (!removed) {
     response.status(404).json({ error: 'Tombol tautan tidak ditemukan.' });
     return;
   }
   response.json({ ok: true });
-});
+}));
 
 app.use('/api', (_request, response) => {
   response.status(404).json({ error: 'Endpoint API tidak ditemukan.' });
@@ -494,5 +461,5 @@ app.use((error, _request, response, next) => {
 });
 
 app.listen(port, '0.0.0.0', () => {
-  console.log(`GenRe DIY berjalan pada port ${port}; database: ${databasePath}`);
+  console.log(`Portal Genre DIY berjalan pada port ${port}; database MySQL: ${databaseOptions.database}`);
 });

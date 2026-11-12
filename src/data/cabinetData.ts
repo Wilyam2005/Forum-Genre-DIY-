@@ -601,7 +601,7 @@ export const MEMBERS: Member[] = [
 // DATA RESMI DARI FORUM GENRE DIY.pdf
 export const OFFICIAL_PROFILE = {
   about: {
-    title: 'FORUM GENRE??',
+    title: 'Forum Genre',
     description: 'Forum Genre adalah salah satu organisasi remaja terbesar di Indonesia yang fokus membantu remaja merencanakan masa depannya sehingga dapat mewujudkan mimpi Indonesia Emas 2045. Berdiri sejak tahun 2010, Forum Genre telah berkontribusi aktif dalam membantu dan hadir di tengah-tengah remaja Indonesia melalui Pusat Informasi Konseling Remaja (PIK-R) yang keberadaannya tersebar di berbagai sekolah (SMP/SMA/Perguruan Tinggi) dan masyarakat.',
     establishedYear: 2010,
     targetEra: 'Indonesia Emas 2045'
@@ -618,9 +618,9 @@ export const OFFICIAL_PROFILE = {
     { label: 'Penerima Manfaat', value: '6.000.000', detail: 'Masyarakat & Pemuda' }
   ],
   hierarchy: [
-    { level: 'Pusat', name: 'GENRE INDONESIA', desc: 'Tingkat Nasional Pengarah Kebijakan Makro' },
-    { level: 'Provinsi', name: 'GENRE PROV (D.I. Yogyakarta)', desc: 'Penggerak & Pembina Wilayah Provinsi' },
-    { level: 'Kab/Kota', name: 'GENRE KAB/KOTA', desc: 'Ujung Tombak Eksekusi di 5 Wilayah DIY' },
+    { level: 'Pusat', name: 'Genre Indonesia', desc: 'Tingkat Nasional Pengarah Kebijakan Makro' },
+    { level: 'Provinsi', name: 'Genre Prov (D.I. Yogyakarta)', desc: 'Penggerak & Pembina Wilayah Provinsi' },
+    { level: 'Kab/Kota', name: 'Genre Kab/Kota', desc: 'Ujung Tombak Eksekusi di 5 Wilayah DIY' },
     { level: 'Basis', name: 'PIK-R', desc: 'Pusat Informasi Konseling Remaja Sekolah & Desa' }
   ],
   pillars: {
@@ -682,13 +682,13 @@ export const OFFICIAL_PROFILE = {
     }
   ],
   distinction: {
-    title: 'PERBEDAAN DUTA GENRE & FORUM GENRE',
+    title: 'Perbedaan Duta Genre & Forum Genre',
     forumGenre: {
-      name: 'FORUM GENRE',
+      name: 'Forum Genre',
       desc: 'Forum Genre merupakan wadah atau organisasi remaja yang menjadi tempat berhimpun, berkoordinasi, dan menjalankan berbagai program kerja terkait edukasi dan pengembangan remaja, seperti melalui kegiatan PIK-R.'
     },
     dutaGenre: {
-      name: 'DUTA GENRE',
+      name: 'Duta Genre',
       desc: 'Duta Genre adalah individu terpilih yang berperan sebagai perwakilan atau ikon dari program Genre. Duta Genre bertugas menjadi role model, menyampaikan pesan-pesan edukatif kepada remaja, serta menjadi wajah program dalam berbagai kegiatan.'
     }
   }
