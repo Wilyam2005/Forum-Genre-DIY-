@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.qodo/
+drive-download-*/
+.env
+.env.*
+!.env.deploy
+!.env.development.local.example
+!deploy/genre/.env.example
+deploy/genre/.env
+deploy/genre/node_modules/
+deploy/genre/data/*.sqlite
+deploy/genre/data/*.sqlite-shm
+deploy/genre/data/*.sqlite-wal

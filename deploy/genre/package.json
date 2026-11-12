@@ -1,0 +1,15 @@
+{
+  "name": "genre-diy-deployment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=22 <26"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "sql.js": "^1.13.0"
+  }
+}
